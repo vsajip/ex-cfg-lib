@@ -9,6 +9,7 @@
 # end
 
 defmodule Utils do
+  @moduledoc false
   alias CFG.Location
 
   def data_path(s) do
@@ -21,6 +22,7 @@ defmodule Utils do
 end
 
 defmodule LocationTest do
+  @moduledoc false
   use ExUnit.Case
   alias CFG.Location, as: Location
 
@@ -43,6 +45,7 @@ defmodule LocationTest do
 end
 
 defmodule TokenizerTest do
+  @moduledoc false
   use ExUnit.Case
   alias ComplexNum.Cartesian, as: Complex
   alias CFG.{Tokenizer, Token, Location, RecognizerError}
@@ -8119,6 +8122,7 @@ defmodule TokenizerTest do
 end
 
 defmodule ParserTest do
+  @moduledoc false
   use ExUnit.Case
   alias ComplexNum.Cartesian, as: Complex
 
@@ -9253,6 +9257,7 @@ defmodule ParserTest do
 end
 
 defmodule ConfigTest do
+  @moduledoc false
   use ExUnit.Case
   use Bitwise
   import Utils
@@ -10049,7 +10054,8 @@ defmodule ConfigTest do
       "foo[2:]",
       "foo[::1]",
       "foo[::-1]",
-      "foo[3]"
+      "foo[3]",
+      "foo"
     ]
 
     Enum.each(cases, fn s ->
@@ -10059,6 +10065,33 @@ defmodule ConfigTest do
   end
 
   test "circular references" do
+    p = data_path(Path.join("derived", "test.cfg"))
+    {:ok, cfg} = Config.from_file(p)
+
+    cases = [
+      [
+        "circ_list[1]",
+        %{detail: [{_L(46, 7), "circ_list[1]"}], location: _L(46, 7), reason: :circular_reference}
+      ],
+      [
+        "circ_map.a",
+        %{
+          detail: [
+            {_L(51, 10), "circ_map.b"},
+            {_L(52, 10), "circ_map.c"},
+            {_L(53, 10), "circ_map.a"}
+          ],
+          location: _L(51, 10),
+          reason: :circular_reference
+        }
+      ]
+    ]
+
+    Enum.each(cases, fn case ->
+      [key, ev] = case
+      {:error, e} = Config.get(cfg, key)
+      match_error(ev, e)
+    end)
   end
 
   test "slices and indices" do

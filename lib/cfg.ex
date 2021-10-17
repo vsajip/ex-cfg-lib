@@ -10,66 +10,47 @@ defmodule CFG do
   """
   alias ComplexNum.Cartesian, as: Complex
 
-  defmodule RecognizerError do
-    @moduledoc """
-    This is the type used to return errors.
-    """
-    defexception [:location, :reason, :detail]
-
-    @type t :: %__MODULE__{
-            location: term(),
-            reason: atom(),
-            detail: term()
-          }
-
-    def exception(reason, location, detail),
-      do: %__MODULE__{reason: reason, location: location, detail: detail}
-
-    def message(exception = %__MODULE__{}),
-      do: CFG.format_error(exception)
-  end
-
-  @doc """
-  Format an exception for display.
-  """
-  @spec format_error(%RecognizerError{}) :: String.t()
-  def format_error(exception) do
-    "#{inspect(exception)}"
-  end
-
   defmodule Location do
-    # """This represents a location in the CFG source."""
-    @moduledoc false
-
     defstruct line: 1, column: 1
+
+    @typedoc """
+    This type represents a location in the CFG source.
+
+    These are its fields:
+
+    * `line`: The source line. It must be a positive integer.
+    * `column`: The source column. It must be a non-negative integer. Newlines end
+      with a zero column; the first character in the next line would be at column 1.
+    """
+    @type t :: %__MODULE__{
+            line: pos_integer(),
+            column: non_neg_integer()
+          }
 
     @doc """
     Return a location with the specified line and column.
     """
-    @spec new(integer(), non_neg_integer()) :: %Location{}
+    @spec new(pos_integer(), non_neg_integer()) :: %Location{}
     def new(line \\ 1, column \\ 1) do
       %Location{line: line, column: column}
     end
 
-    @doc """
-    Return the location of the start of the next line.
-    """
+    # "Return the location of the start of the next line."
+    @doc false
     @spec next_line(%Location{}) :: %Location{}
     def next_line(loc) do
       %Location{line: loc.line + 1, column: 1}
     end
 
-    @doc """
-    Return the location of the next column.
-    """
+    # "Return the location of the next column."
+    @doc false
     @spec next_col(%Location{}) :: %Location{}
     def next_col(loc) do
       %Location{line: loc.line, column: loc.column + 1}
     end
 
-    @doc """
-    Return the location of the previous column.
-    """
+    # "Return the location of the previous column."
+    @doc false
     @spec prev_col(%Location{}) :: %Location{}
     def prev_col(loc) do
       %Location{line: loc.line, column: loc.column - 1}
@@ -86,6 +67,89 @@ defmodule CFG do
     def to_string(loc) do
       "(#{loc.line}, #{loc.column})"
     end
+  end
+
+  defmodule RecognizerError do
+    defexception [:location, :reason, :detail]
+
+    @typedoc """
+    This type represents an error which occurred when processing CFG.
+
+    These are its fields:
+
+    * `location`: The optional location of the error in the source. Some errors may
+      have no location.
+    * `reason`: An atom indicating the kind of error.
+    * `detail`: Optional additional information about the error.
+
+    Here are the error reasons currently in use:
+
+    * `invalid_escape` - an invalid escape sequence was detected in a string.
+    * `unterminated_backtick` - a backtick-string is unterminated.
+    * `newlines_not_allowed` - newlines aren't allowed in strings other than multi-line strings.
+    * `unterminated_string` - a quoted string is unterminated.
+    * `bad_number` - a number is badly formed.
+    * `bad_octal_constant` - a number which looks like an octal constant is badly formed.
+    * `unexpected_char` - an unexpected character was encountered.
+    * `unexpected_token` - an unexpected token was encountered.
+    * `unexpected_token_for_value` - an unexpected token was encountered when looking for a value.
+    * `unexpected_token_for_atom` - an unexpected token was encountered when looking for an atomic value.
+    * `bad_key_value_separator` - a bad key/value separator was encountered.
+    * `unexpected_for_key` - an unexpected token was encountered when looking for a key in a mapping.
+    * `unexpected_token_for_container` - an unexpected token was encountered when parsing a container.
+    * `text_after_container` - there is trailing text following text for a valid container.
+    * `invalid_index` - an array or slice index is invalid.
+    * `unexpected_token_for_expression` - an unexpected token was encountered when looking for an expression.
+    * `must_be_mapping` - a top-level configuration must be a mapping.
+    * `invalid_path` - a CFG path is invalid.
+    * `invalid_path_extra` - there is text following what looks like a valid CFG path.
+    * `no_configuration` - no configuration has been loaded.
+    * `not_found` - the specified key or path was not found in this configuration.
+    * `invalid_step` - an invalid step (zero) was specified.
+    * `unexpected_path_start` - a CFG path doesn't begin as expected (with an identifier).
+    * `cannot_evaluate` - an expression cannot be evaluated.
+    * `string_expected` - a string was expected, but not found.
+    * `include_not_found` - an included configuration was not found.
+    * `cannot_add` - an addition cannot be performed.
+    * `cannot_negate` - a negation cannot be performed.
+    * `cannot_subtract` - a subtraction cannot be performed.
+    * `cannot_multiply` - a multiplication cannot be performed.
+    * `cannot_divide`  - a division cannot be performed.
+    * `cannot_integer_divide` - an integer division cannot be performed.
+    * `cannot_compute_modulo` - a modulo operation cannot be performed.
+    * `cannot_left_shift` - a left shift cannot be performed.
+    * `cannot_right_shift` - a right shift cannot be performed.
+    * `cannot_raise_to_power` - raise to power operation cannot be performed.
+    * `cannot_bitwise_or` - a bitwise-or operation cannot be performed.
+    * `cannot_bitwise_and` - a bitwise-and operation cannot be performed.
+    * `cannot_bitwise_xor` - a bitwise-xor operation cannot be performed.
+    * `unknown_variable` - a variable is undefined or no context was provided.
+    * `conversion_failure` - a string conversion operation cannot be performed.
+    * `circular_reference` - a circular reference was detected when resolving references.
+    * `not_implemented` - a feature is not implemented.
+
+    """
+    @type t :: %__MODULE__{
+            location: nil | %Location{},
+            reason: atom(),
+            detail: nil | any()
+          }
+
+    @doc false
+    def exception(reason, location, detail),
+      do: %__MODULE__{reason: reason, location: location, detail: detail}
+
+    @doc false
+    def message(exception = %__MODULE__{}),
+      do: CFG.format_error(exception)
+  end
+
+  @doc """
+  Format an exception for display.
+  """
+  @spec format_error(%RecognizerError{}) :: String.t()
+  def format_error(exception) do
+    "#{inspect(exception)}"
   end
 
   defimpl String.Chars, for: ComplexNum do
@@ -1194,7 +1258,7 @@ defmodule CFG do
       kind = state.next_token.kind
 
       if !MapSet.member?(state.value_starters, kind) do
-        error(:unexpected_at_value, state.next_token.start, kind)
+        error(:unexpected_token_for_value, state.next_token.start, kind)
       else
         if kind == :STRING do
           strings(this)
@@ -2410,6 +2474,24 @@ defmodule CFG do
               refs_seen: nil,
               string_converter: nil
 
+    @typedoc """
+    This type represents a configuration loaded from CFG source.
+
+    These are its fields:
+
+    * `no_duplicates` - Whether duplicate keys are allowed. If allowed, newer values for a given key
+      silently overwrite older ones. If not and a duplicate is seen, an error is returned.
+    * `strict_conversions` - Whether conversions of backtick-strings are allowed to fail. If not
+      strict, a failure results in the special string being returned. Otherwise, an error is returned.
+    * `context` - An optional map containing a variable name-to-value mapping.
+    * `include_path` - A list of directories which is searched for included configurations. The directory
+      of the including configuration is searched first.
+    * `path` - The absolute path from where the configuration was loaded.
+    * `root_dir` - The directory containing `path`.
+    * `parent` - The parent configuration of an included configuration.
+    * `string_converter` - A function which is called with a string and the configuration to perform
+       backtick-string conversion.
+    """
     @type t :: %__MODULE__{
             data: nil | map(),
             no_duplicates: boolean(),
@@ -2835,7 +2917,11 @@ defmodule CFG do
     def to_source(node) do
       case node do
         %Token{} ->
-          to_string(node.value)
+          if node.kind == :WORD do
+            node.text
+          else
+            to_string(node.value)
+          end
 
         %BinaryNode{} ->
           path = unpack_path(node)
@@ -2943,7 +3029,8 @@ defmodule CFG do
     """
     @spec get(pid(), binary(), any()) :: tuple()
     def get(this, key, default \\ :MISSING) do
-      state = Agent.get_and_update(this, fn state -> {state, %{state | refs_seen: %{}}} end)
+      state =
+        Agent.get_and_update(this, fn state -> {state, %{state | refs_seen: MapSet.new()}} end)
 
       result =
         cond do
@@ -3343,6 +3430,8 @@ defmodule CFG do
 
         state = Agent.get(pid, fn state -> state end)
         Agent.stop(pid)
+
+        Agent.update(this, fn state -> %{state | refs_seen: MapSet.new()} end)
 
         if is_nil(state.error) do
           evaluated(state.config, state.current)
@@ -3915,7 +4004,7 @@ defmodule CFG do
                   {:ok, Map.drop(lhs, Map.keys(rhs))}
 
                 true ->
-                  error(:cannot_bitwise_and, __ENV__.line, {lhs, rhs})
+                  error(:cannot_bitwise_xor, __ENV__.line, {lhs, rhs})
               end
           end
       end
@@ -3970,7 +4059,35 @@ defmodule CFG do
     end
 
     defp eval_reference(this, node) do
-      get_from_path(this, node.operand)
+      refs_seen = Agent.get(this, fn state -> state.refs_seen end)
+
+      if MapSet.member?(refs_seen, node) do
+        sorted =
+          Enum.sort(refs_seen, fn node1, node2 ->
+            cond do
+              node1.start.line > node2.start.line ->
+                false
+
+              node1.start.line == node2.start.line && node1.start.column > node2.start.column ->
+                false
+
+              true ->
+                true
+            end
+          end)
+
+        sorted =
+          Enum.map(sorted, fn node ->
+            {node.start, to_source(node.operand)}
+          end)
+
+        error(:circular_reference, node.start, sorted)
+      else
+        refs_seen = MapSet.put(refs_seen, node)
+        # Logger.debug("#{__ENV__.line}: #{inspect(refs_seen)}")
+        Agent.update(this, fn state -> %{state | refs_seen: refs_seen} end)
+        get_from_path(this, node.operand)
+      end
     end
 
     defp evaluate(this, node) do
