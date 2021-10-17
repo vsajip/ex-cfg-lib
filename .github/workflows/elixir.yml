@@ -28,7 +28,10 @@ jobs:
       if: ${{ matrix.os == 'windows-latest' }}
       run: |
         $env:HOME = $env:HOMEPATH
-        echo "Set HOME to $HOME"
+        echo "Env: HOME = $env:HOME"
+        echo "Env: HOMEPATH = $env:HOMEPATH"
+        echo "Env: USERPROFILE = $env:USERPROFILE"
+        pwd
         mix deps.get
         mix test
     - name: Run tests on POSIX
