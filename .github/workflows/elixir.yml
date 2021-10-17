@@ -1,0 +1,38 @@
+
+name: Elixir
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        otp: ['22.2', '24.1']
+        elixir: ['1.9.1', '1.12.2']
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: ${{matrix.otp}}
+        elixir-version: ${{matrix.elixir}}
+    - name: Run tests on Windows after setting the HOME environment variable
+      if: ${{ matrix.os == 'windows-latest' }}
+      run: |
+        $env:HOME = $env:HOMEPATH
+        echo "Set HOME to $HOME"
+        mix deps.get
+        mix test
+    - name: Run tests on POSIX
+      if: ${{ matrix.os != 'windows-latest' }}
+      run: |
+        mix deps.get
+        mix test
