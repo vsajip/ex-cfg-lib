@@ -3485,7 +3485,20 @@ defmodule CFG do
       result
     end
 
-    defp find_include(this, fname) do
+    defp same_file(p1, p2) do
+      s1 = Path.expand(p1)
+      s2 = Path.expand(p2)
+
+      case :os.type() do
+        {:unix, _} ->
+          String.equivalent?(s1, s2)
+
+        {:win32, _} ->
+          String.equivalent?(String.downcase(s1), String.downcase(s2))
+      end
+    end
+
+    defp find_include(this, fname, start) do
       state = Agent.get(this, fn state -> state end)
 
       {found, path} =
@@ -3519,49 +3532,53 @@ defmodule CFG do
         end
 
       if !found do
-        {:error, nil}
+        error(:cannot_evaluate, start, fname)
       else
-        v = Parser.from_file(path)
+        if state.path != nil and same_file(state.path, path) do
+          error(:cannot_include_self, start, Path.basename(path))
+        else
+          v = Parser.from_file(path)
 
-        case v do
-          {:error, _} ->
-            v
+          case v do
+            {:error, _} ->
+              v
 
-          {:ok, p} ->
-            v = Parser.container(p)
+            {:ok, p} ->
+              v = Parser.container(p)
 
-            case v do
-              {:error, _} ->
-                v
+              case v do
+                {:error, _} ->
+                  v
 
-              {:ok, node} ->
-                case node do
-                  mn = %MappingNode{} ->
-                    # Create a new child config
-                    {:ok, child} = Config.new(state)
-                    # Logger.debug("#{__ENV__.line}: created child #{inspect child}")
-                    set_path(child, path)
+                {:ok, node} ->
+                  case node do
+                    mn = %MappingNode{} ->
+                      # Create a new child config
+                      {:ok, child} = Config.new(state)
+                      # Logger.debug("#{__ENV__.line}: created child #{inspect child}")
+                      set_path(child, path)
 
-                    if is_cached(this) do
-                      set_cached(child, true)
-                    end
+                      if is_cached(this) do
+                        set_cached(child, true)
+                      end
 
-                    v = wrap_mapping(child, mn)
-                    # Logger.debug("#{__ENV__.line}: #{inspect v}")
+                      v = wrap_mapping(child, mn)
+                      # Logger.debug("#{__ENV__.line}: #{inspect v}")
 
-                    case v do
-                      {:error, _} ->
-                        v
+                      case v do
+                        {:error, _} ->
+                          v
 
-                      {:ok, data} ->
-                        Agent.update(child, fn state -> %{state | parent: this, data: data} end)
-                        {:ok, child}
-                    end
+                        {:ok, data} ->
+                          Agent.update(child, fn state -> %{state | parent: this, data: data} end)
+                          {:ok, child}
+                      end
 
-                  _ ->
-                    v
-                end
-            end
+                    _ ->
+                      v
+                  end
+              end
+          end
         end
       end
     end
@@ -3577,7 +3594,7 @@ defmodule CFG do
           if !is_binary(key) do
             error(:string_expected, node.start, key)
           else
-            v = find_include(this, key)
+            v = find_include(this, key, node.start)
             # Logger.debug("#{__ENV__.line}: #{inspect v}")
             case v do
               {:error, nil} ->

@@ -10151,4 +10151,18 @@ defmodule ConfigTest do
     {:ok, v} = Config.get(cfg, "level1.level2.final")
     assert v == 42
   end
+
+  test "recursive configuration" do
+    p = data_path(Path.join("derived", "recurse.cfg"))
+    {:ok, cfg} = Config.from_file(p)
+    v = Config.get(cfg, "recurse")
+    # Logger.debug("#{__ENV__.line}: #{inspect v}")
+    assert v ==
+             {:error,
+              %RecognizerError{
+                reason: :cannot_include_self,
+                location: _L(1, 11),
+                detail: "recurse.cfg"
+              }}
+  end
 end
