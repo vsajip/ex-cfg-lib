@@ -510,6 +510,7 @@ defmodule CFG do
 
     defp collect_string(this, quote, start) do
       c = get_char(this)
+      c1_loc = char_loc(this)
 
       quoter =
         if c != quote do
@@ -520,6 +521,7 @@ defmodule CFG do
 
           if c != quote do
             push_back(this, c)
+            Agent.update(this, fn state -> %{state | char_location: c1_loc} end)
             push_back(this, quote)
             quote
           else
